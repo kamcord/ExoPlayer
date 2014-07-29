@@ -22,6 +22,7 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.media.MediaExtractor;
 import android.net.Uri;
+import android.util.Log;
 
 import java.io.IOException;
 import java.util.Map;
@@ -38,6 +39,8 @@ public final class FrameworkSampleSource implements SampleSource {
   private static final int TRACK_STATE_DISABLED = 0;
   private static final int TRACK_STATE_ENABLED = 1;
   private static final int TRACK_STATE_FORMAT_SENT = 2;
+
+  private static final String TAG = "FrameworkSampleSource";
 
   private final Context context;
   private final Uri uri;
@@ -164,6 +167,21 @@ public final class FrameworkSampleSource implements SampleSource {
     extractor.unselectTrack(track);
     pendingDiscontinuities[track] = false;
     trackStates[track] = TRACK_STATE_DISABLED;
+  }
+
+  @Override
+  public void forceAdvance(int track) {
+    if( extractor != null ) {
+      seekTimeUs = -1;
+      int advanceCount = 0;
+      int sampleTrackIndex = extractor.getSampleTrackIndex();
+      while( sampleTrackIndex != -1 && sampleTrackIndex != track) {
+        extractor.advance();
+        advanceCount++;
+        sampleTrackIndex = extractor.getSampleTrackIndex();
+      }
+      Log.w(TAG, "  Force advanced " + advanceCount + " times.");
+    }
   }
 
   @Override

@@ -244,6 +244,9 @@ public class ChunkSampleSource implements SampleSource, Loader.Listener {
       loadControl.trimAllocator();
     }
   }
+  
+  @Override
+  public void forceAdvance(int track) {}
 
   @Override
   public void continueBuffering(long playbackPositionUs) {

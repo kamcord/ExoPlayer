@@ -26,6 +26,7 @@ import android.media.MediaCrypto;
 import android.media.MediaExtractor;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.util.Log;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -101,6 +102,8 @@ public abstract class MediaCodecTrackRenderer extends TrackRenderer {
    * be returned to the codec.
    */
   private static final int RECONFIGURATION_STATE_QUEUE_PENDING = 2;
+  
+  private static final String TAG = "MediaCodecTrackRenderer";
 
   public final CodecCounters codecCounters;
 
@@ -133,6 +136,7 @@ public abstract class MediaCodecTrackRenderer extends TrackRenderer {
   private boolean waitingForKeys;
   private boolean waitingForFirstSyncFrame;
   private long currentPositionUs;
+  private int consecutiveInputBufferSampleWaits = 0;
 
   /**
    * @param source The upstream source from which the renderer obtains samples.
@@ -438,11 +442,13 @@ public abstract class MediaCodecTrackRenderer extends TrackRenderer {
    */
   private boolean feedInputBuffer() throws IOException, ExoPlaybackException {
     if (inputStreamEnded) {
+      consecutiveInputBufferSampleWaits = 0;
       return false;
     }
     if (inputIndex < 0) {
       inputIndex = codec.dequeueInputBuffer(0);
       if (inputIndex < 0) {
+        consecutiveInputBufferSampleWaits = 0;
         return false;
       }
       sampleHolder.data = inputBuffers[inputIndex];
@@ -468,8 +474,16 @@ public abstract class MediaCodecTrackRenderer extends TrackRenderer {
 
     if (result == SampleSource.NOTHING_READ) {
       codecCounters.inputBufferWaitingForSampleCount++;
+      if( consecutiveInputBufferSampleWaits++ > 10 ) {
+        consecutiveInputBufferSampleWaits = 0;
+        Log.w(TAG, "After waiting for samples, forcing an advance.");
+        source.forceAdvance(trackIndex);
+      }
       return false;
     }
+
+    consecutiveInputBufferSampleWaits = 0;
+
     if (result == SampleSource.DISCONTINUITY_READ) {
       flushCodec();
       return true;

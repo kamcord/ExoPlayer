@@ -97,6 +97,8 @@ public interface SampleSource {
    * @param track The track to disable.
    */
   public void disable(int track);
+  
+  public void forceAdvance(int track);
 
   /**
    * Indicates to the source that it should still be buffering data.
